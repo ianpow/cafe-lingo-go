@@ -5,6 +5,15 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { HelpMeSay } from "@/components/HelpMeSay";
 import "./globals.css";
 
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "CafeLingo Go — Learn Languages for Your Holiday",
   description:
@@ -15,12 +24,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "CafeLingo Go",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
 };
 
