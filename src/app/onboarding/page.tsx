@@ -125,7 +125,12 @@ export default function OnboardingPage() {
         body: JSON.stringify({ profile: userProfile, trip }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate curriculum");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const detail = errorData.detail || errorData.error || `HTTP ${res.status}`;
+        console.error("Curriculum API error:", res.status, detail);
+        throw new Error(`Curriculum generation failed: ${detail}`);
+      }
 
       const curriculum = await res.json();
       setCurriculum(trip.id, curriculum);
