@@ -5,9 +5,12 @@ import { buildSystemPrompt, buildUserMessage } from "@/lib/prompts/system-prompt
 export const maxDuration = 30;
 import type { Turn, Message } from "@/lib/types";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient() {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 interface ChatRequest {
   userMessage: string;
@@ -20,6 +23,7 @@ interface ChatRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = getAnthropicClient();
     const body: ChatRequest = await request.json();
     const {
       userMessage,

@@ -3,9 +3,12 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 60;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient() {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 interface PassportRequest {
   city: string;
@@ -18,6 +21,7 @@ interface PassportRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = getAnthropicClient();
     const body: PassportRequest = await request.json();
 
     const response = await anthropic.messages.create({

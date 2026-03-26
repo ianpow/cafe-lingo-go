@@ -48,14 +48,14 @@ export async function POST(request: NextRequest) {
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 2500,
+      max_tokens: 4096,
       messages: [
         { role: "user", content: prompt },
         { role: "assistant", content: "{" },
       ],
     });
 
-    console.log(`[lesson-generate] Claude responded. Stop: ${response.stop_reason}`);
+    console.log(`[lesson-generate] Claude responded. Stop: ${response.stop_reason}, Usage: ${JSON.stringify(response.usage)}`);
 
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
@@ -73,11 +73,38 @@ export async function POST(request: NextRequest) {
       jsonStr = jsonMatch[1].trim();
     }
 
+    // If response was truncated (max_tokens), try to repair the JSON
+    if (response.stop_reason === "max_tokens") {
+      console.warn("[lesson-generate] Response truncated at max_tokens, attempting JSON repair");
+      // Try to close any open arrays/objects to salvage partial data
+      let openBraces = 0;
+      let openBrackets = 0;
+      let inString = false;
+      let escaped = false;
+      for (const ch of jsonStr) {
+        if (escaped) { escaped = false; continue; }
+        if (ch === '\\') { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === '{') openBraces++;
+        if (ch === '}') openBraces--;
+        if (ch === '[') openBrackets++;
+        if (ch === ']') openBrackets--;
+      }
+      // Remove any trailing partial key/value
+      jsonStr = jsonStr.replace(/,\s*"[^"]*"?\s*$/, '');
+      jsonStr = jsonStr.replace(/,\s*$/, '');
+      // Close open brackets and braces
+      for (let i = 0; i < openBrackets; i++) jsonStr += ']';
+      for (let i = 0; i < openBraces; i++) jsonStr += '}';
+    }
+
     let scenario;
     try {
       scenario = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("[lesson-generate] JSON parse failed. First 500 chars:", jsonStr.substring(0, 500));
+      console.error("[lesson-generate] Last 300 chars:", jsonStr.substring(jsonStr.length - 300));
       console.error("[lesson-generate] Parse error:", parseError);
       return NextResponse.json(
         { error: "Failed to parse lesson JSON", detail: String(parseError) },

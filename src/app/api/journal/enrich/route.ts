@@ -3,9 +3,12 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 30;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient() {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 interface EnrichRequest {
   words: string[];
@@ -16,6 +19,7 @@ interface EnrichRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = getAnthropicClient();
     const body: EnrichRequest = await request.json();
 
     const response = await anthropic.messages.create({

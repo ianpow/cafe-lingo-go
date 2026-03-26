@@ -3,9 +3,12 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 60;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient() {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 interface CultureRequest {
   city: string;
@@ -17,6 +20,7 @@ interface CultureRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = getAnthropicClient();
     const body: CultureRequest = await request.json();
 
     const travelDate = new Date(body.holidayDate);

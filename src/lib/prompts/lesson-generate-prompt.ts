@@ -36,12 +36,14 @@ ${previousVocabulary.length > 0 ? previousVocabulary.join(", ") : "None yet — 
 
 ## Scenario Requirements
 1. Set the scenario in the SPECIFIC location: ${topic.scenarioSetting}
-2. Create 5-7 conversational turns
-3. Each turn has: the avatar's line (in ${langName}), what the user should say back (in ${langName}), and vocabulary items
+2. Create exactly 4 conversational turns (keep it concise!)
+3. Each turn has: the avatar's line (in ${langName}), what the user should say back (in ${langName}), and 2-3 vocabulary items
 4. Build from simple to slightly more complex within the scenario
 5. Use realistic, natural ${langName} at beginner level (A1-A2)
-6. Include local food names, prices in euros, and real place references for ${trip.destinationCity}
+6. Include real place references for ${trip.destinationCity}
 7. The avatar is a friendly local character (waiter, taxi driver, hotel staff, etc.)
+8. Keep acceptableVariations to 1-2 alternatives max
+9. grammarNote is optional — only include if genuinely useful
 
 ## Output Format
 Respond with valid JSON only. Use this exact Scenario/Turn structure:
