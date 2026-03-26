@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
           role: "user",
           content: `Generate 12 cultural dos/don'ts cards for a tourist visiting ${body.city}, ${body.country} in ${monthName}. Learning ${body.languageName}.
 
-Return ONLY JSON: {"cards":[{"id":"1","type":"do"|"dont","title":"...","description":"...","category":"dining|greetings|transport|tipping|dress|social|safety|festivals","phrase":{"text":"phrase in ${body.languageName}","english":"...","pronunciation":"phonetic"}|null}]}
+CRITICAL: ALL "text" fields in phrases MUST be in ${body.languageName} (NOT English). The "english" field is the English translation.
+
+Return ONLY JSON: {"cards":[{"id":"1","type":"do"|"dont","title":"...","description":"...","category":"dining|greetings|transport|tipping|dress|social|safety|festivals","phrase":{"text":"IN ${body.languageName.toUpperCase()}","english":"English translation","pronunciation":"phonetic"}|null}]}
 
 Cover: dining, greetings, tipping, dress, social, transport, safety. Specific to ${body.city}. Be concise.`,
         },

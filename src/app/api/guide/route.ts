@@ -26,9 +26,12 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Create a travel guide for ${body.city}, ${body.country}. Learning ${body.languageName}. Interests: ${body.interests.join(", ") || "general"}. Food: ${body.foodPreferences.join(", ") || "none"}.
+          content: `Create a travel guide for ${body.city}, ${body.country}. The traveller is learning ${body.languageName}.
+Interests: ${body.interests.join(", ") || "general"}. Food: ${body.foodPreferences.join(", ") || "none"}.
 
-Return ONLY JSON: {"transport":{"overview":"...","types":[{"name":"...","description":"...","ticketInfo":"...","usefulPhrases":[{"phrase":"...","english":"...","when":"..."}],"tips":["..."]}]},"attractions":[{"name":"...","area":"...","description":"...","tip":"...","price":"...","usefulPhrase":{"phrase":"...","english":"..."}}],"emergency":{"numbers":[{"service":"...","number":"..."}],"phrases":[{"phrase":"...","english":"...","pronunciation":"..."}]},"eating":{"mealTimes":"...","tipping":"...","mustTry":[{"dish":"...","description":"...","price":"..."}],"dietaryPhrases":[{"phrase":"...","english":"...","pronunciation":"..."}]}}
+CRITICAL: ALL "phrase" fields MUST be written in ${body.languageName} (NOT English). The "english" field is the English translation. For example if learning Spanish: "phrase": "¿Dónde está la parada?", "english": "Where is the stop?"
+
+Return ONLY JSON: {"transport":{"overview":"...","types":[{"name":"...","description":"...","ticketInfo":"...","usefulPhrases":[{"phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation","when":"..."}],"tips":["..."]}]},"attractions":[{"name":"...","area":"...","description":"...","tip":"...","price":"...","usefulPhrase":{"phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation"}}],"emergency":{"numbers":[{"service":"...","number":"..."}],"phrases":[{"phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation","pronunciation":"phonetic"}]},"eating":{"mealTimes":"...","tipping":"...","mustTry":[{"dish":"...","description":"...","price":"..."}],"dietaryPhrases":[{"phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation","pronunciation":"phonetic"}]}}
 
 3 transport types, 5 attractions, 4 emergency phrases, 4 must-try dishes. Real info about ${body.city}. Be concise.`,
         },

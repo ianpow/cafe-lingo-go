@@ -26,9 +26,11 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Generate 20 critical phrases a traveller MUST pronounce clearly in ${body.city}, ${body.country}. Food/allergies: ${body.foodPreferences.join(", ") || "none"}.
+          content: `Generate 20 critical phrases a traveller MUST pronounce clearly when visiting ${body.city}, ${body.country}. Food/allergies: ${body.foodPreferences.join(", ") || "none"}.
 
-Return ONLY JSON: {"phrases":[{"id":"1","phrase":"in ${body.languageName}","english":"...","pronunciation":"phonetic with STRESSED syllables","category":"emergency|health|food|directions|essential","importance":"why it matters","tips":"pronunciation tip"}]}
+CRITICAL: ALL "phrase" fields MUST be in ${body.languageName} (NOT English). The "english" field is the English translation. Example if Spanish: "phrase":"¡Necesito un médico!","english":"I need a doctor!"
+
+Return ONLY JSON: {"phrases":[{"id":"1","phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation","pronunciation":"phonetic with STRESSED syllables","category":"emergency|health|food|directions|essential","importance":"why it matters","tips":"pronunciation tip"}]}
 
 4 emergency, 4 health, 4 food/dietary, 4 directions, 4 essential. Be concise.`,
         },

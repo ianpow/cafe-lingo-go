@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
           role: "user",
           content: `Create a travel phrasebook for ${body.city}, ${body.country}. Learning ${body.languageName}. Food: ${body.foodPreferences.join(", ") || "none"}.
 
-Return ONLY JSON: {"categories":[{"id":"greetings","name":"Greetings","icon":"👋","phrases":[{"phrase":"...","english":"...","pronunciation":"...","context":"..."}]}]}
+CRITICAL: ALL "phrase" fields MUST be in ${body.languageName} (NOT English). The "english" field is the English translation. Example if Spanish: "phrase":"¿Cuánto cuesta?","english":"How much does it cost?"
+
+Return ONLY JSON: {"categories":[{"id":"greetings","name":"Greetings","icon":"👋","phrases":[{"phrase":"IN ${body.languageName.toUpperCase()}","english":"English translation","pronunciation":"phonetic","context":"..."}]}]}
 
 8 categories (greetings, restaurant, directions, shopping, hotel, pharmacy, emergency, numbers), 5-6 phrases each. Use real ${body.city} context. Be concise.`,
         },

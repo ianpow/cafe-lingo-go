@@ -324,13 +324,13 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Curriculum Timeline */}
+            {/* Curriculum Timeline — clickable topics */}
             {activeTrip.curriculum && (
               <div className="bg-[var(--color-surface)] rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-4">
                   {langConfig?.flag} {langConfig?.name} Curriculum
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {activeTrip.curriculum.tiers.map((tier) => {
                     const completed = tier.topics.filter((t) => t.completed).length;
                     const total = tier.topics.length;
@@ -346,11 +346,30 @@ export default function DashboardPage() {
                             {completed}/{total}
                           </span>
                         </div>
-                        <div className="h-1.5 bg-[var(--color-surface-light)] rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[var(--color-surface-light)] rounded-full overflow-hidden mb-2">
                           <div
                             className="h-full bg-[var(--color-primary)] rounded-full transition-all"
                             style={{ width: `${pct}%` }}
                           />
+                        </div>
+                        <div className="space-y-1">
+                          {tier.topics.map((topic) => (
+                            <button
+                              key={topic.id}
+                              onClick={() => router.push(`/lesson?topicId=${topic.id}`)}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left hover:bg-[var(--color-surface-light)] transition-colors cursor-pointer"
+                            >
+                              <span className="text-sm flex-shrink-0">
+                                {topic.completed ? "✅" : "📝"}
+                              </span>
+                              <span className={`text-sm flex-1 ${topic.completed ? "text-[var(--color-text-muted)]" : ""}`}>
+                                {topic.title}
+                              </span>
+                              {topic.completed && (
+                                <span className="text-xs text-[var(--color-primary)]">Review</span>
+                              )}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     );
