@@ -89,18 +89,31 @@ function LessonContent() {
         .flatMap((t) => t.vocabulary);
 
       try {
+        // Only send the fields the API actually needs — NOT the full trip with curriculum
+        const tripData = {
+          destinationCity: activeTrip.destinationCity,
+          destinationCountry: activeTrip.destinationCountry,
+          foodPreferences: activeTrip.foodPreferences,
+          interests: activeTrip.interests,
+          language: activeTrip.language,
+        };
+
         const res = await fetch("/api/lesson-generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             topic,
             profile,
-            trip: activeTrip,
+            trip: tripData,
             previousVocabulary: previousVocab,
           }),
         });
 
-        if (!res.ok) throw new Error("Failed to generate lesson");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          const detail = errorData.detail || errorData.error || `HTTP ${res.status}`;
+          throw new Error(detail);
+        }
 
         const scenario: Scenario = await res.json();
         cacheScenario(activeTrip.id, topicId, scenario);
