@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserStore } from "@/lib/store/user-store";
 import { useTripStore } from "@/lib/store/trip-store";
@@ -68,12 +68,13 @@ function DrillSelector({ onSelect }: { onSelect: (type: ChallengeType) => void }
 
 function VocabRecallDrill({ onComplete }: { onComplete: (score: number) => void }) {
   const activeTrip = useTripStore((s) => s.getActiveTrip)();
-  const allItems = useSRSStore((s) => Object.values(s.items));
+  const srsItems = useSRSStore((s) => s.items);
   const reviewItem = useSRSStore((s) => s.reviewItem);
 
-  const items = activeTrip
-    ? allItems.filter((i) => i.language === activeTrip.language)
-    : allItems;
+  const items = useMemo(() => {
+    const all = Object.values(srsItems);
+    return activeTrip ? all.filter((i) => i.language === activeTrip.language) : all;
+  }, [srsItems, activeTrip]);
 
   const [questions, setQuestions] = useState<
     { item: SRSItem; options: string[]; correctIndex: number }[]
@@ -216,11 +217,12 @@ function VocabRecallDrill({ onComplete }: { onComplete: (score: number) => void 
 function ListenRepeatDrill({ onComplete }: { onComplete: (score: number) => void }) {
   const activeTrip = useTripStore((s) => s.getActiveTrip)();
   const profile = useUserStore((s) => s.profile);
-  const allItems = useSRSStore((s) => Object.values(s.items));
+  const srsItems = useSRSStore((s) => s.items);
 
-  const items = activeTrip
-    ? allItems.filter((i) => i.language === activeTrip.language)
-    : allItems;
+  const items = useMemo(() => {
+    const all = Object.values(srsItems);
+    return activeTrip ? all.filter((i) => i.language === activeTrip.language) : all;
+  }, [srsItems, activeTrip]);
 
   const [phrases] = useState(() =>
     [...items].sort(() => Math.random() - 0.5).slice(0, 5)
@@ -424,11 +426,12 @@ function ListenRepeatDrill({ onComplete }: { onComplete: (score: number) => void
 function HowWouldYouSayDrill({ onComplete }: { onComplete: (score: number) => void }) {
   const activeTrip = useTripStore((s) => s.getActiveTrip)();
   const profile = useUserStore((s) => s.profile);
-  const allItems = useSRSStore((s) => Object.values(s.items));
+  const srsItems = useSRSStore((s) => s.items);
 
-  const items = activeTrip
-    ? allItems.filter((i) => i.language === activeTrip.language)
-    : allItems;
+  const items = useMemo(() => {
+    const all = Object.values(srsItems);
+    return activeTrip ? all.filter((i) => i.language === activeTrip.language) : all;
+  }, [srsItems, activeTrip]);
 
   const [prompts] = useState(() =>
     [...items].sort(() => Math.random() - 0.5).slice(0, 5)
