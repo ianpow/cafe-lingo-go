@@ -7,6 +7,7 @@ interface StreakState extends StreakData {
   checkAndUpdateStreak: () => void;
   completeLesson: () => void;
   getStreakEmoji: () => string;
+  clearAll: () => void;
 }
 
 function getToday(): string {
@@ -80,6 +81,16 @@ export const useStreakStore = create<StreakState>()(
         set({ totalLessonsCompleted: state.totalLessonsCompleted + 1 });
         get().recordActivity(10);
       },
+
+      clearAll: () =>
+        set({
+          currentStreak: 0,
+          longestStreak: 0,
+          lastActiveDate: null,
+          totalMinutes: 0,
+          totalLessonsCompleted: 0,
+          activeDates: [],
+        }),
 
       getStreakEmoji: () => {
         const streak = get().currentStreak;

@@ -57,10 +57,14 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const clearTrips = useTripStore((s) => s.clearAll);
+  const clearStreak = useStreakStore((s) => s.clearAll);
+
   const handleResetAll = () => {
     clearProfile();
     clearSRS();
-    // Trip store and streak store will be orphaned but harmless
+    clearTrips();
+    clearStreak();
     router.replace("/onboarding");
   };
 

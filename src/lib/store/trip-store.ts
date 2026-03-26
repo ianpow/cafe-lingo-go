@@ -30,6 +30,9 @@ interface TripState {
   cacheScenario: (tripId: string, topicId: string, scenario: Scenario) => void;
   getCachedScenario: (tripId: string, topicId: string) => Scenario | null;
 
+  // Reset
+  clearAll: () => void;
+
   // Progress helpers for active trip
   markTopicCompleted: (topicId: string) => void;
   markDayCompleted: (day: number) => void;
@@ -118,6 +121,16 @@ export const useTripStore = create<TripState>()(
 
       getCachedScenario: (tripId, topicId) =>
         get().cachedScenarios[tripId]?.[topicId] ?? null,
+
+      // ── Reset ──────────────────────────────────────────────────
+      clearAll: () =>
+        set({
+          trips: [],
+          activeTripId: null,
+          cachedScenarios: {},
+          isGenerating: false,
+          generationError: null,
+        }),
 
       // ── Progress helpers (operate on active trip) ────────────────
 
