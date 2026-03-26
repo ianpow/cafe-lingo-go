@@ -4,6 +4,9 @@ import { buildCurriculumPrompt } from "@/lib/prompts/curriculum-prompt";
 import { buildDailySchedule, daysBetween } from "@/lib/curriculum/schedule-engine";
 import type { UserProfile, Trip, Curriculum, CurriculumTier } from "@/lib/types/curriculum";
 
+// Allow up to 60 seconds for curriculum generation (Claude can take a while)
+export const maxDuration = 60;
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });

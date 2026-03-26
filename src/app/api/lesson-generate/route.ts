@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildLessonGeneratePrompt } from "@/lib/prompts/lesson-generate-prompt";
+
+export const maxDuration = 60;
 import type { UserProfile, Trip, CurriculumTopic } from "@/lib/types/curriculum";
 
 const anthropic = new Anthropic({

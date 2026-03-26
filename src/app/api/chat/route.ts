@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt, buildUserMessage } from "@/lib/prompts/system-prompt";
+
+export const maxDuration = 30;
 import type { Turn, Message } from "@/lib/types";
 
 const anthropic = new Anthropic({
