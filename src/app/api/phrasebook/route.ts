@@ -20,45 +20,20 @@ export async function POST(request: NextRequest) {
     const body: PhrasebookRequest = await request.json();
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 3000,
       messages: [
         {
           role: "user",
-          content: `Create a practical travel phrasebook for someone visiting ${body.city}, ${body.country} who speaks English and is learning ${body.languageName}. Food preferences: ${body.foodPreferences.join(", ") || "none"}.
+          content: `Create a travel phrasebook for ${body.city}, ${body.country}. Learning ${body.languageName}. Food: ${body.foodPreferences.join(", ") || "none"}.
 
-Return JSON only with this structure:
-{
-  "categories": [
-    {
-      "id": "greetings",
-      "name": "Greetings & Basics",
-      "icon": "👋",
-      "phrases": [
+Return ONLY JSON: {"categories":[{"id":"greetings","name":"Greetings","icon":"👋","phrases":[{"phrase":"...","english":"...","pronunciation":"...","context":"..."}]}]}
+
+8 categories (greetings, restaurant, directions, shopping, hotel, pharmacy, emergency, numbers), 5-6 phrases each. Use real ${body.city} context. Be concise.`,
+        },
         {
-          "phrase": "phrase in ${body.languageName}",
-          "english": "English translation",
-          "pronunciation": "phonetic pronunciation guide",
-          "context": "When/where to use this"
-        }
-      ]
-    }
-  ]
-}
-
-Include these categories with 6-8 phrases each:
-1. "greetings" - Greetings & Basics (hello, goodbye, please, thank you, excuse me, sorry, yes, no)
-2. "restaurant" - At the Restaurant (ordering, asking about dishes, the bill, dietary needs based on their food preferences)
-3. "directions" - Getting Around (where is, left, right, straight, how far, nearest, taxi, bus, metro — use real ${body.city} transport)
-4. "shopping" - Shopping & Markets (how much, too expensive, discount, sizes, colours, paying — reference real ${body.city} markets/shops)
-5. "hotel" - At the Hotel (check-in, key, wifi, breakfast, room problem, checkout)
-6. "pharmacy" - Health & Pharmacy (headache, stomach, allergies, medicine, doctor, hospital)
-7. "social" - Small Talk (my name is, where are you from, I'm from Scotland, do you speak English, I'm learning ${body.languageName}, beautiful city)
-8. "emergency" - Emergency & Help (help, police, hospital, I'm lost, stolen, I need, call)
-9. "compliments" - Being Polite (the food is delicious, beautiful place, you're very kind, thank you so much, what do you recommend)
-10. "numbers" - Numbers & Money (1-10, 20, 50, 100, how much does it cost, the bill please, do you accept card, change)
-
-All phrases must be in ${body.languageName} with accurate pronunciation guides. Tailor restaurant phrases to their food preferences and use real ${body.city} context where relevant.`,
+          role: "assistant",
+          content: '{"categories":[',
         },
       ],
     });
@@ -68,7 +43,7 @@ All phrases must be in ${body.languageName} with accurate pronunciation guides. 
       throw new Error("No response");
     }
 
-    let jsonStr = textBlock.text.trim();
+    let jsonStr = '{"categories":[' + textBlock.text.trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) jsonStr = jsonMatch[1].trim();
 

@@ -45,6 +45,15 @@ function LessonContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const hasStartedRef = useRef(false);
 
+  // Reset state when topicId changes
+  useEffect(() => {
+    hasStartedRef.current = false;
+    setIsLoading(true);
+    setLoadError(null);
+    store.resetLesson();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicId]);
+
   // Load or generate scenario
   useEffect(() => {
     if (!topicId || !profile || !activeTrip?.curriculum) {

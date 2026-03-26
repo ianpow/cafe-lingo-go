@@ -24,9 +24,12 @@ export async function POST(request: NextRequest) {
     const prompt = buildLessonGeneratePrompt(topic, profile, trip, previousVocabulary);
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 3000,
-      messages: [{ role: "user", content: prompt }],
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2500,
+      messages: [
+        { role: "user", content: prompt },
+        { role: "assistant", content: "{" },
+      ],
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
@@ -34,8 +37,8 @@ export async function POST(request: NextRequest) {
       throw new Error("No text response from Claude");
     }
 
-    // Extract JSON from response
-    let jsonStr = textBlock.text.trim();
+    // Reconstruct full JSON — we prefilled '{' in the assistant turn
+    let jsonStr = "{" + textBlock.text.trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim();

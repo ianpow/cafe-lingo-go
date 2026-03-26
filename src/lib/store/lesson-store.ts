@@ -47,7 +47,17 @@ export const useLessonStore = create<LessonState>((set, get) => ({
   isLessonComplete: false,
   showTranslation: true,
 
-  setScenario: (scenario) => set({ scenario, currentTurnIndex: 0 }),
+  setScenario: (scenario) => set({
+    scenario,
+    currentTurnIndex: 0,
+    conversationHistory: [],
+    pronunciationResults: [],
+    latestPronunciation: null,
+    isRecording: false,
+    isAvatarSpeaking: false,
+    isProcessing: false,
+    isLessonComplete: false,
+  }),
 
   getCurrentTurn: () => {
     const { scenario, currentTurnIndex } = get();

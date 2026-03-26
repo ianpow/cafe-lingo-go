@@ -21,60 +21,20 @@ export async function POST(request: NextRequest) {
     const body: GuideRequest = await request.json();
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 3000,
       messages: [
         {
           role: "user",
-          content: `Create a practical travel guide for ${body.city}, ${body.country} for someone learning ${body.languageName}. Their interests: ${body.interests.join(", ") || "general"}. Food preferences: ${body.foodPreferences.join(", ") || "none"}.
+          content: `Create a travel guide for ${body.city}, ${body.country}. Learning ${body.languageName}. Interests: ${body.interests.join(", ") || "general"}. Food: ${body.foodPreferences.join(", ") || "none"}.
 
-Return JSON only with this structure:
-{
-  "transport": {
-    "overview": "Brief transport overview for the city",
-    "types": [
-      {
-        "name": "Metro/Bus/Taxi/etc",
-        "description": "How it works, what to expect",
-        "ticketInfo": "How to buy tickets, typical prices in euros",
-        "usefulPhrases": [
-          {"phrase": "phrase in ${body.languageName}", "english": "English translation", "when": "When to use it"}
-        ],
-        "tips": ["practical tip 1", "practical tip 2"]
-      }
-    ]
-  },
-  "attractions": [
-    {
-      "name": "Real attraction name",
-      "area": "Neighbourhood/area name",
-      "description": "Brief description",
-      "tip": "Practical visitor tip",
-      "price": "Entry cost or 'Free'",
-      "usefulPhrase": {"phrase": "phrase in ${body.languageName}", "english": "English meaning"}
-    }
-  ],
-  "emergency": {
-    "numbers": [
-      {"service": "Police/Ambulance/etc", "number": "phone number"}
-    ],
-    "phrases": [
-      {"phrase": "phrase in ${body.languageName}", "english": "English translation", "pronunciation": "phonetic guide"}
-    ]
-  },
-  "eating": {
-    "mealTimes": "When locals eat breakfast/lunch/dinner",
-    "tipping": "Tipping customs",
-    "mustTry": [
-      {"dish": "dish name", "description": "what it is", "price": "typical price"}
-    ],
-    "dietaryPhrases": [
-      {"phrase": "phrase in ${body.languageName}", "english": "English", "pronunciation": "phonetic"}
-    ]
-  }
-}
+Return ONLY JSON: {"transport":{"overview":"...","types":[{"name":"...","description":"...","ticketInfo":"...","usefulPhrases":[{"phrase":"...","english":"...","when":"..."}],"tips":["..."]}]},"attractions":[{"name":"...","area":"...","description":"...","tip":"...","price":"...","usefulPhrase":{"phrase":"...","english":"..."}}],"emergency":{"numbers":[{"service":"...","number":"..."}],"phrases":[{"phrase":"...","english":"...","pronunciation":"..."}]},"eating":{"mealTimes":"...","tipping":"...","mustTry":[{"dish":"...","description":"...","price":"..."}],"dietaryPhrases":[{"phrase":"...","english":"...","pronunciation":"..."}]}}
 
-Include 3-4 transport types, 6-8 attractions personalised to their interests, 5-6 emergency phrases, and 4-6 must-try dishes considering their food preferences. All phrases should be in ${body.languageName}. Use REAL, accurate information about ${body.city}.`,
+3 transport types, 5 attractions, 4 emergency phrases, 4 must-try dishes. Real info about ${body.city}. Be concise.`,
+        },
+        {
+          role: "assistant",
+          content: '{"transport":{',
         },
       ],
     });
@@ -84,7 +44,7 @@ Include 3-4 transport types, 6-8 attractions personalised to their interests, 5-
       throw new Error("No response");
     }
 
-    let jsonStr = textBlock.text.trim();
+    let jsonStr = '{"transport":{' + textBlock.text.trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) jsonStr = jsonMatch[1].trim();
 
