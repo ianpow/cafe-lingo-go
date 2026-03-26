@@ -21,20 +21,35 @@
 
 /* ─── Light theme ──────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-primary: #059669;
-  --color-primary-dark: #047857;
-  --color-primary-light: #10b981;
-  --color-secondary: #d97706;
-  --color-accent: #0891b2;
+  --color-primary: #047857;
+  --color-primary-dark: #065f46;
+  --color-primary-light: #059669;
+  --color-secondary: #b45309;
+  --color-accent: #0e7490;
   --color-bg: #f8fafc;
   --color-surface: #ffffff;
   --color-surface-light: #e2e8f0;
   --color-text: #1e293b;
-  --color-text-muted: #64748b;
-  --color-success: #16a34a;
-  --color-warning: #ca8a04;
+  --color-text-muted: #475569;
+  --color-success: #15803d;
+  --color-warning: #a16207;
   --color-error: #dc2626;
   color-scheme: light;
+}
+
+/* Light mode: ensure primary-coloured text on light/white backgrounds is readable */
+[data-theme="light"] .text-\[var\(--color-primary\)\] {
+  color: #065f46;
+}
+
+/* Light mode: chat bubbles need dark text */
+[data-theme="light"] .bg-\[var\(--color-primary\)\] {
+  color: #ffffff;
+}
+
+/* Light mode: success text needs to be darker */
+[data-theme="light"] .text-\[var\(--color-success\)\] {
+  color: #166534;
 }
 
 body {
