@@ -19,59 +19,25 @@ export function buildCurriculumPrompt(
   const tierDescriptions = tiers
     .map(
       (t) =>
-        `Tier ${t.id} — ${t.name}: ${t.description}\n  Topics: ${t.topicTemplates.join(", ")}`
+        `Tier ${t.id} — ${t.name}: ${t.topicTemplates.join(", ")}`
     )
     .join("\n");
 
   const langName = getLanguage(trip.language).name;
 
-  return `You are a language learning curriculum designer creating a personalised ${langName} course.
+  return `Create a ${langName} curriculum for ${profile.name} visiting ${trip.destinationCity}, ${trip.destinationCountry} on ${trip.holidayDate} (${totalDays} days to prepare). Level: ${trip.targetLevel}. Interests: ${trip.interests.join(", ") || "none"}. Food: ${trip.foodPreferences.join(", ") || "none"}.
 
-## Student Profile
-- Name: ${profile.name}, Age: ${profile.age}, From: ${profile.country}
-- Destination: ${trip.destinationCity}, ${trip.destinationCountry}
-- Holiday date: ${trip.holidayDate} (${totalDays} days to prepare)
-- Target level: ${trip.targetLevel}
-- Food preferences: ${trip.foodPreferences.join(", ") || "none specified"}
-- Interests: ${trip.interests.join(", ") || "none specified"}
-
-## Tier Structure
+Tiers:
 ${tierDescriptions}
 
-## Your Task
-Generate a complete curriculum with detailed topics for each tier. Every topic MUST be deeply personalised:
+Rules:
+- Use REAL locations, restaurants, landmarks in ${trip.destinationCity}
+- Vocabulary: 5-8 key words per topic (keep compact)
+- Set scenarios in specific real places
+- Include a short culturalTip per topic
 
-1. **City-specific**: Set scenarios in REAL, NAMED locations in ${trip.destinationCity}. Use actual street names, neighbourhoods, landmarks, restaurants, and transport systems.
-2. **Interest-driven**: Incorporate the student's interests (${trip.interests.join(", ")}) into scenarios where relevant. E.g., if they like football, include a scenario about getting to the local stadium.
-3. **Food-aware**: Use the student's food preferences (${trip.foodPreferences.join(", ")}) to shape restaurant/food scenarios and vocabulary priority. If they're vegetarian, teach "sin carne" in Survival tier. If they have allergies, teach allergy phrases as emergency vocabulary.
-4. **Realistic prices**: Use actual local prices for ${trip.destinationCity} in number/shopping exercises.
-5. **Cultural tips**: Include city-specific cultural tips relevant to their travel dates and destination.
+Respond with ONLY valid JSON, no markdown. Structure:
+{"tiers":[{"id":1,"name":"Survival","description":"...","topics":[{"id":"t1-1","title":"...","description":"...","tierId":1,"vocabulary":["word1","word2"],"scenarioSetting":"...","culturalTip":"..."}]}]}
 
-## Output Format
-Respond with valid JSON only:
-{
-  "tiers": [
-    {
-      "id": 1,
-      "name": "Survival",
-      "description": "...",
-      "topics": [
-        {
-          "id": "t1-greeting",
-          "title": "Greetings at your Barcelona hotel",
-          "description": "Learn to greet staff at Hotel [real hotel area] in the Gothic Quarter",
-          "tierId": 1,
-          "vocabulary": ["hola", "buenos días", "buenas tardes", "por favor", "gracias"],
-          "scenarioSetting": "Reception desk at a hotel in Barri Gòtic, Barcelona",
-          "culturalTip": "In Catalonia, locals may greet you with 'Bon dia' (Catalan) as well as 'Buenos días'"
-        }
-      ]
-    }
-  ]
-}
-
-Generate ${tiers.map((t) => `${t.topicTemplates.length} topics for Tier ${t.id}`).join(", ")}.
-Each topic needs: id, title, description, tierId, vocabulary (8-12 key words/phrases), scenarioSetting (specific real location), and culturalTip (optional but encouraged).
-
-Make the vocabulary and settings feel real and local to ${trip.destinationCity}. This student should feel like their course was designed specifically for THEIR trip.`;
+Generate ${tiers.map((t) => `${t.topicTemplates.length} topics for Tier ${t.id}`).join(", ")}. Be concise.`;
 }

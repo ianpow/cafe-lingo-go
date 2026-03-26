@@ -26,9 +26,12 @@ export async function POST(request: NextRequest) {
     const prompt = buildCurriculumPrompt(profile, trip, totalDays);
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
+      model: "claude-haiku-4-5-20251001", // Haiku 4.5: fast + reliable for structured JSON
+      max_tokens: 3000,
+      messages: [
+        { role: "user", content: prompt },
+        { role: "assistant", content: '{"tiers":[' },
+      ],
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
@@ -36,8 +39,9 @@ export async function POST(request: NextRequest) {
       throw new Error("No text response from Claude");
     }
 
-    // Extract JSON from response (handle possible markdown code blocks)
-    let jsonStr = textBlock.text.trim();
+    // Reconstruct full JSON — we prefilled '{"tiers":[' in the assistant turn
+    let jsonStr = '{"tiers":[' + textBlock.text.trim();
+    // Strip any markdown code fences if present
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim();
