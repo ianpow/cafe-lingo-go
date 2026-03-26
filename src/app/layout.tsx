@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { HelpMeSay } from "@/components/HelpMeSay";
@@ -57,6 +58,7 @@ export default function RootLayout({
           <OfflineBanner />
           {children}
           <HelpMeSay />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
