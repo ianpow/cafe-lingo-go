@@ -61,11 +61,20 @@ export default function SettingsPage() {
   const clearStreak = useStreakStore((s) => s.clearAll);
 
   const handleResetAll = () => {
-    clearProfile();
-    clearSRS();
-    clearTrips();
-    clearStreak();
-    router.replace("/onboarding");
+    // Clear all localStorage directly first to avoid partial state issues
+    if (typeof window !== "undefined") {
+      const storeKeys = [
+        "cafelingo-go-user",
+        "cafelingo-go-trips",
+        "cafelingo-go-srs",
+        "cafelingo-go-streak",
+        "cafelingo-go-theme",
+        "cafelingo-go-journal",
+      ];
+      storeKeys.forEach((key) => localStorage.removeItem(key));
+    }
+    // Navigate away before React tries to re-render with cleared state
+    window.location.href = "/onboarding";
   };
 
   const handleArchiveTrip = (tripId: string) => {
