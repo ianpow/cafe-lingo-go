@@ -125,6 +125,43 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Apply a scoring curve to make Azure's lenient scores more discriminating.
+ * Azure tends to give 85-100 for anything remotely correct, making it
+ * nearly impossible to score below 95%. This curve stretches the meaningful
+ * range so learners get more actionable feedback.
+ *
+ * Mapping (approximate):
+ *   Azure 100 → 100  (perfect is still perfect)
+ *   Azure 95  → 88
+ *   Azure 90  → 76
+ *   Azure 85  → 64
+ *   Azure 80  → 52
+ *   Azure 70  → 28
+ *   Azure 60  → 4
+ *   Azure <50 → 0
+ */
+function applyScoringCurve(rawScore: number): number {
+  if (rawScore >= 100) return 100;
+  if (rawScore <= 50) return 0;
+
+  // Piecewise linear curve that spreads 70-100 across most of the display range
+  // while compressing the already-bad 50-70 range
+  if (rawScore >= 90) {
+    // 90-100 → 76-100 (gentle curve at top)
+    return Math.round(76 + ((rawScore - 90) / 10) * 24);
+  } else if (rawScore >= 80) {
+    // 80-90 → 52-76
+    return Math.round(52 + ((rawScore - 80) / 10) * 24);
+  } else if (rawScore >= 70) {
+    // 70-80 → 28-52
+    return Math.round(28 + ((rawScore - 70) / 10) * 24);
+  } else {
+    // 50-70 → 0-28
+    return Math.round(((rawScore - 50) / 20) * 28);
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseAzureRestResult(azureResult: any): PronunciationResult {
   // Log all top-level keys for debugging
@@ -152,15 +189,16 @@ function parseAzureRestResult(azureResult: any): PronunciationResult {
     for (const word of nBest.Words) {
       // REST API may put scores directly on word OR under PronunciationAssessment
       const pa = word.PronunciationAssessment || {};
+      const rawWordAccuracy = pa.AccuracyScore ?? word.AccuracyScore ?? 0;
       words.push({
         word: word.Word || "",
-        accuracyScore: pa.AccuracyScore ?? word.AccuracyScore ?? 0,
+        accuracyScore: applyScoringCurve(rawWordAccuracy),
         errorType: pa.ErrorType ?? word.ErrorType ?? "None",
         phonemes: word.Phonemes?.map(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (p: any) => ({
             phoneme: p.Phoneme || "",
-            accuracyScore: p.PronunciationAssessment?.AccuracyScore ?? p.AccuracyScore ?? 0,
+            accuracyScore: applyScoringCurve(p.PronunciationAssessment?.AccuracyScore ?? p.AccuracyScore ?? 0),
           })
         ),
       });
@@ -171,11 +209,16 @@ function parseAzureRestResult(azureResult: any): PronunciationResult {
   const assessment = nBest?.PronunciationAssessment;
 
   if (assessment) {
+    const rawOverall = assessment.PronScore ?? assessment.PronunciationScore ?? assessment.AccuracyScore ?? 0;
+    const rawAccuracy = assessment.AccuracyScore ?? 0;
+    const rawFluency = assessment.FluencyScore ?? 0;
+    const rawCompleteness = assessment.CompletenessScore ?? 0;
+    console.log("[Pronunciation] Raw Azure scores — overall:", rawOverall, "accuracy:", rawAccuracy, "fluency:", rawFluency, "completeness:", rawCompleteness);
     return {
-      overallScore: assessment.PronScore ?? assessment.PronunciationScore ?? assessment.AccuracyScore ?? 0,
-      accuracyScore: assessment.AccuracyScore ?? 0,
-      fluencyScore: assessment.FluencyScore ?? 0,
-      completenessScore: assessment.CompletenessScore ?? 0,
+      overallScore: applyScoringCurve(rawOverall),
+      accuracyScore: applyScoringCurve(rawAccuracy),
+      fluencyScore: applyScoringCurve(rawFluency),
+      completenessScore: applyScoringCurve(rawCompleteness),
       words,
     };
   }
@@ -183,10 +226,10 @@ function parseAzureRestResult(azureResult: any): PronunciationResult {
   // Some API versions put AccuracyScore directly on NBest
   if (nBest?.AccuracyScore !== undefined) {
     return {
-      overallScore: nBest.PronScore ?? nBest.AccuracyScore ?? 0,
-      accuracyScore: nBest.AccuracyScore ?? 0,
-      fluencyScore: nBest.FluencyScore ?? 0,
-      completenessScore: nBest.CompletenessScore ?? 0,
+      overallScore: applyScoringCurve(nBest.PronScore ?? nBest.AccuracyScore ?? 0),
+      accuracyScore: applyScoringCurve(nBest.AccuracyScore ?? 0),
+      fluencyScore: applyScoringCurve(nBest.FluencyScore ?? 0),
+      completenessScore: applyScoringCurve(nBest.CompletenessScore ?? 0),
       words,
     };
   }
@@ -196,10 +239,10 @@ function parseAzureRestResult(azureResult: any): PronunciationResult {
     const avgAccuracy = words.reduce((sum, w) => sum + w.accuracyScore, 0) / words.length;
     console.log("[Pronunciation] Calculating from word scores, avgAccuracy:", avgAccuracy);
     return {
-      overallScore: Math.round(avgAccuracy),
-      accuracyScore: Math.round(avgAccuracy),
-      fluencyScore: Math.round(avgAccuracy * 0.9),
-      completenessScore: 100,
+      overallScore: applyScoringCurve(Math.round(avgAccuracy)),
+      accuracyScore: applyScoringCurve(Math.round(avgAccuracy)),
+      fluencyScore: applyScoringCurve(Math.round(avgAccuracy * 0.9)),
+      completenessScore: applyScoringCurve(100),
       words,
     };
   }
