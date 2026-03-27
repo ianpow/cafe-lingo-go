@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { useUserStore } from "@/lib/store/user-store";
 import { useTripStore } from "@/lib/store/trip-store";
 import { getLanguage } from "@/lib/config/language-registry";
 
+// Pages where the floating button overlaps interactive controls
+const HIDDEN_ON_PAGES = ["/lesson", "/review", "/drill"];
+
 export function HelpMeSay() {
+  const pathname = usePathname();
   const profile = useUserStore((s) => s.profile);
   const activeTrip = useTripStore((s) => s.getActiveTrip)();
   const [isOpen, setIsOpen] = useState(false);
@@ -21,8 +26,9 @@ export function HelpMeSay() {
   const language = activeTrip?.language || "es";
   const langConfig = getLanguage(language);
 
-  // Don't show if no profile or no active trip
+  // Don't show if no profile, no active trip, or on pages with bottom controls
   if (!profile || !activeTrip) return null;
+  if (HIDDEN_ON_PAGES.some((p) => pathname?.startsWith(p))) return null;
 
   const handleOpen = () => {
     setIsOpen(true);

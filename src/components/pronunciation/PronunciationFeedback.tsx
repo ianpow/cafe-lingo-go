@@ -12,17 +12,17 @@ export function PronunciationFeedback({
 }: PronunciationFeedbackProps) {
   const scoreColor =
     result.overallScore >= 80
-      ? "text-green-400"
+      ? "text-[var(--color-success)]"
       : result.overallScore >= 60
-        ? "text-yellow-400"
-        : "text-red-400";
+        ? "text-[var(--color-warning)]"
+        : "text-[var(--color-error)]";
 
   const ringColor =
     result.overallScore >= 80
-      ? "stroke-green-400"
+      ? "stroke-[var(--color-success)]"
       : result.overallScore >= 60
-        ? "stroke-yellow-400"
-        : "stroke-red-400";
+        ? "stroke-[var(--color-warning)]"
+        : "stroke-[var(--color-error)]";
 
   const circumference = 2 * Math.PI * 40;
   const dashOffset = circumference * (1 - result.overallScore / 100);
@@ -80,10 +80,10 @@ export function PronunciationFeedback({
             {result.words.map((word, i) => {
               const color =
                 word.accuracyScore >= 80
-                  ? "bg-green-500/20 text-green-400 border-green-500/30"
+                  ? "bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)] text-[var(--color-success)] border-[color-mix(in_srgb,var(--color-success)_30%,transparent)]"
                   : word.accuracyScore >= 60
-                    ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                    : "bg-red-500/20 text-red-400 border-red-500/30";
+                    ? "bg-[color-mix(in_srgb,var(--color-warning)_20%,transparent)] text-[var(--color-warning)] border-[color-mix(in_srgb,var(--color-warning)_30%,transparent)]"
+                    : "bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] text-[var(--color-error)] border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]";
               return (
                 <span
                   key={i}
@@ -106,10 +106,10 @@ export function PronunciationFeedback({
 function SubScore({ label, score }: { label: string; score: number }) {
   const barColor =
     score >= 80
-      ? "bg-green-400"
+      ? "bg-[var(--color-success)]"
       : score >= 60
-        ? "bg-yellow-400"
-        : "bg-red-400";
+        ? "bg-[var(--color-warning)]"
+        : "bg-[var(--color-error)]";
 
   return (
     <div className="flex items-center gap-2">

@@ -236,54 +236,58 @@ function LessonContent() {
         />
       </div>
 
-      {/* Chat + Pronunciation */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* Scrollable middle: chat + pronunciation + vocabulary */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <ChatPanel
           messages={store.conversationHistory}
           showTranslation={store.showTranslation}
         />
         {store.latestPronunciation && (
-          <PronunciationFeedback result={store.latestPronunciation} />
+          <div className="px-4 py-2">
+            <PronunciationFeedback result={store.latestPronunciation} />
+          </div>
         )}
         {currentTurn && !store.isLessonComplete && (
           <VocabularyPanel items={currentTurn.vocabulary} />
         )}
       </div>
 
-      {/* Bottom controls */}
-      {store.isLessonComplete ? (
-        <div className="p-4 border-t border-[var(--color-surface-light)] text-center">
-          <h3 className="text-lg font-bold text-[var(--color-success)] mb-2">
-            Lesson Complete!
-          </h3>
-          <button
-            onClick={() => {
-              handleLessonComplete();
-              router.push("/dashboard");
-            }}
-            className="px-6 py-3 bg-[var(--color-primary)] rounded-lg font-medium text-white cursor-pointer"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      ) : (
-        <>
-          {currentTurn && (
-            <PromptCard
-              turn={currentTurn}
-              showTranslation={store.showTranslation}
-              onListenClick={listenToExpectedPhrase}
-            />
-          )}
-          <div className="p-4 flex justify-center">
-            <RecordButton
-              isRecording={store.isRecording}
-              isDisabled={store.isAvatarSpeaking || store.isProcessing}
-              onToggle={handleRecordToggle}
-            />
+      {/* Fixed bottom controls — always visible */}
+      <div className="flex-shrink-0 border-t border-[var(--color-surface-light)] bg-[var(--color-bg)]">
+        {store.isLessonComplete ? (
+          <div className="p-4 text-center">
+            <h3 className="text-lg font-bold text-[var(--color-success)] mb-2">
+              Lesson Complete!
+            </h3>
+            <button
+              onClick={() => {
+                handleLessonComplete();
+                router.push("/dashboard");
+              }}
+              className="px-6 py-3 bg-[var(--color-primary)] rounded-lg font-medium text-white cursor-pointer"
+            >
+              Back to Dashboard
+            </button>
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            {currentTurn && (
+              <PromptCard
+                turn={currentTurn}
+                showTranslation={store.showTranslation}
+                onListenClick={listenToExpectedPhrase}
+              />
+            )}
+            <div className="p-3 flex justify-center">
+              <RecordButton
+                isRecording={store.isRecording}
+                isDisabled={store.isAvatarSpeaking || store.isProcessing}
+                onToggle={handleRecordToggle}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

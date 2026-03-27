@@ -118,7 +118,7 @@ export default function ReviewPage() {
 
       {/* Score buttons */}
       {showAnswer && (
-        <div className="p-4 space-y-2">
+        <div className="p-4 pb-8 space-y-2">
           <p className="text-center text-xs text-[var(--color-text-muted)] mb-2">
             How well did you know this?
           </p>
@@ -146,10 +146,10 @@ function ScoreButton({
   onClick: (score: number) => void;
 }) {
   const colorMap: Record<string, string> = {
-    red: "bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30",
-    yellow: "bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border-yellow-500/30",
-    green: "bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/30",
-    cyan: "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border-cyan-500/30",
+    red: "bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-error)_30%,transparent)] text-[var(--color-error)] border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]",
+    yellow: "bg-[color-mix(in_srgb,var(--color-warning)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-warning)_30%,transparent)] text-[var(--color-warning)] border-[color-mix(in_srgb,var(--color-warning)_30%,transparent)]",
+    green: "bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-success)_30%,transparent)] text-[var(--color-success)] border-[color-mix(in_srgb,var(--color-success)_30%,transparent)]",
+    cyan: "bg-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] text-[var(--color-primary)] border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]",
   };
 
   return (
