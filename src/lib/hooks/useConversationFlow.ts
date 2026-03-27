@@ -299,10 +299,10 @@ export function useConversationFlow({ avatarRef, gender = "female" }: Conversati
       console.log("[Conversation] User said:", transcription);
       console.log("[Conversation] Expected:", turn.expectedUserPhrase);
 
-      // Get pronunciation score — use Azure if available, otherwise estimate from transcription
+      // Get pronunciation score — always try Azure API first, fall back to estimation
       let pronResult;
-      if (process.env.NEXT_PUBLIC_HAS_AZURE === "true") {
-        pronResult = await fetch("/api/pronunciation", {
+      try {
+        const pronResponse = await fetch("/api/pronunciation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -311,9 +311,11 @@ export function useConversationFlow({ avatarRef, gender = "female" }: Conversati
             audioMimeType: audioBlob.type,
             language,
           }),
-        }).then((r) => r.json());
-      } else {
-        // Estimate score by comparing transcription to expected phrase
+        });
+        if (!pronResponse.ok) throw new Error(`Pronunciation API error: ${pronResponse.status}`);
+        pronResult = await pronResponse.json();
+      } catch (pronError) {
+        console.warn("[Conversation] Azure pronunciation failed, using estimation:", pronError);
         pronResult = estimatePronunciationScore(transcription, turn.expectedUserPhrase, turn.acceptableVariations);
       }
 

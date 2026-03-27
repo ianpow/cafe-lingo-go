@@ -252,7 +252,7 @@ export default function DashboardPage() {
                       router.push(`/drill?type=${todaysChallenge.type}&topicId=${todaysChallenge.topicId}`);
                     }
                   }}
-                  className="w-full bg-gradient-to-r from-[color-mix(in_srgb,var(--color-secondary)_15%,transparent)] to-[color-mix(in_srgb,var(--color-accent)_10%,transparent)] rounded-xl p-4 border border-[color-mix(in_srgb,var(--color-secondary)_30%,transparent)] hover:border-[var(--color-secondary)] transition-colors text-left cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] rounded-xl p-4 border-l-4 border-l-[var(--color-secondary)] border border-[var(--color-surface-light)] hover:border-[var(--color-secondary)] transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
                     <div>
