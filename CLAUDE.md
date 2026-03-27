@@ -4,20 +4,97 @@
 CafeLingo Go is a personalised, deadline-driven language learning app. Users enter their holiday destination, date, target fluency level, and personal info. The app generates a structured curriculum with daily lessons and challenges to reach the desired fluency by their holiday.
 
 **Repo:** https://github.com/ianpow/cafe-lingo-go.git
+**Production:** https://go.cafelingo.co.uk (deployed on Vercel)
 **Local path:** E:/Claude Projects/cafe-lingo-go
 **Reference app:** E:/Claude Projects/cafe-lingo (the original CafeLingo - do NOT modify)
 
 ## Tech Stack
-- Next.js 16 + TypeScript + Tailwind CSS
-- Zustand (with persist/localStorage) for state
-- ElevenLabs TTS (multilingual_v2), OpenAI Whisper STT, Azure Speech pronunciation, Anthropic Claude (Sonnet 4)
+- Next.js 16 + TypeScript + Tailwind CSS v4
+- Zustand (with persist/localStorage) for state management
+- Anthropic Claude (Haiku 4.5 for generation, Sonnet for chat) via `@anthropic-ai/sdk`
+- ElevenLabs TTS (multilingual_v2) for avatar speech
+- OpenAI Whisper STT for speech-to-text
+- Azure Speech REST API for pronunciation assessment
 - TalkingHead.js v1.7 for 3D avatar with lip sync
-- Male/female avatar models (male.glb, female.glb) - port from cafe-lingo public/models/
+- Male/female avatar models (male.glb, female.glb)
+- Vercel Speed Insights for performance monitoring
+- Vercel Hobby plan, deployed to `lhr1` (London) region
 
-## Starting with Spanish only, French to follow.
+## Current Status (March 2026)
+**All core features are built and deployed.** The app is functional end-to-end:
+- Onboarding, curriculum generation, lesson delivery, SRS review, drills
+- All Phase 7 "during-the-trip" features (translate, phrasebook, passport, culture, journal, menu scanner, city guide)
+- Settings with trip management (edit, archive/restore, delete, regenerate curriculum)
+- Light/dark/system theme support
+- Tabbed dashboard (Learn / Travel)
 
-## Key Concept
-Unlike the original CafeLingo (static hand-written scenarios), CafeLingo Go uses Claude to **dynamically generate personalised lesson plans** based on user profile. Scenarios follow the same Scenario/Turn TypeScript interfaces so all existing avatar/conversation/pronunciation components work unchanged.
+Starting with Spanish and Italian. French to follow.
+
+## Key Architecture Decisions
+
+### Curriculum Generation — Tier-by-Tier
+Curriculum is generated one tier at a time (not all at once) to prevent JSON truncation on Vercel's token limits. Each tier (5 topics) fits within 4096 tokens.
+
+```
+POST /api/curriculum/generate
+  → for each tier: call Claude Haiku 4.5 with buildTierPrompt()
+  → assistant prefill: "{" to force JSON output
+  → max_tokens: 4096 per tier
+  → stop_reason check: reject if "max_tokens" (truncated)
+```
+
+**Key file:** `src/app/api/curriculum/generate/route.ts`
+
+### Lesson Generation
+Each lesson scenario is generated on-demand when the user starts a topic. Uses Claude Haiku 4.5 with exactly 4 conversational turns, 2-3 vocabulary items per turn.
+
+**Key file:** `src/app/api/lesson-generate/route.ts`
+
+**Important:** The lesson page sends only slim trip data (city, country, food prefs, interests, language) — NOT the full trip object with curriculum, to keep request size small.
+
+### Lazy Anthropic Client Initialisation
+ALL API routes use lazy initialisation for the Anthropic client to prevent cold start crashes on Vercel:
+```typescript
+function getAnthropicClient() {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
+```
+**Never** use module-level `const anthropic = new Anthropic()` — this crashes on Vercel if the env var isn't available at import time.
+
+### Pronunciation Scoring Curve
+Azure Speech tends to give 85-100 for nearly any attempt. A piecewise linear scoring curve in `/api/pronunciation/route.ts` stretches the meaningful range:
+- Azure 95 → displays ~88
+- Azure 90 → displays ~76
+- Azure 85 → displays ~64
+- Azure 80 → displays ~52
+
+The `useConversationFlow` hook always calls `/api/pronunciation` first, falling back to client-side estimation only if the API fails. No env var gating.
+
+### Smart Daily Challenge Selection
+`src/lib/curriculum/challenge-selector.ts` uses `selectDailyChallenge()` with SRS-aware logic:
+1. If 5+ SRS items are due → challenge becomes `flashcard-review`
+2. If scheduled challenge duplicates "Next Lesson" (same uncompleted topic) → switches to a review challenge for a completed topic
+3. Day 1 with no completed topics → hides challenge (would duplicate Next Lesson CTA)
+
+### Theme System — CSS Variables
+All colors use CSS custom properties (`--color-primary`, `--color-success`, `--color-error`, etc.) for light/dark mode. **Never use hardcoded Tailwind colors** like `text-green-400` — use `text-[var(--color-success)]` instead. For transparent backgrounds, use `color-mix()`:
+```css
+bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)]
+```
+
+### Reset All Data
+Settings page "Delete Everything" clears localStorage keys directly and does `window.location.href = "/onboarding"` (hard navigation) to avoid React re-render crashes from partially cleared Zustand stores. Store keys:
+- `cafelingo-go-user`, `cafelingo-go-trips`, `cafelingo-go-srs`
+- `cafelingo-go-streak`, `cafelingo-go-theme`, `cafelingo-go-journal`
+
+### Mobile Layout Pattern
+Use `h-[100dvh]` (dynamic viewport height) instead of `min-h-screen` / `100vh` for full-screen pages (lesson, review). Mobile browsers' address bar and nav buttons cause `100vh` to extend behind chrome, pushing content off-screen. Pin bottom controls with `flex-shrink-0` and `env(safe-area-inset-bottom)` for notched phones.
+
+### HelpMeSay Floating Button
+Hidden on `/lesson`, `/review`, `/drill` pages (via `usePathname` check) to avoid overlapping interactive controls like record buttons and score buttons.
 
 ## User Profile Captures
 - Name, age, country (default: Scotland)
@@ -26,84 +103,26 @@ Unlike the original CafeLingo (static hand-written scenarios), CafeLingo Go uses
 - Avatar gender (male/female)
 
 ## Curriculum Structure (5 tiers, taught in order)
-1. **Survival** - Emergency phrases, greetings (hello, goodbye, good morning/afternoon/night, please, thank you), numbers 1-20, "I don't understand", "Do you speak English?"
-2. **Essentials** - Directions (left, right, straight, metres, kilometres, blocks, landmarks), transport words, "how much?", "where is...?", essential place names (police, hospital, pharmacy, bank, hotel, taxi, bus, train, bar, restaurant)
-3. **Getting Around** - Taxi/bus/train phrases, hotel check-in/out, restaurant ordering (breakfast, lunch, dinner), reading a menu, paying the bill
-4. **Social** - Introductions (name, age, where from, what you do), likes/dislikes, small talk, compliments
+1. **Survival** - Emergency phrases, greetings, numbers 1-20, "I don't understand", "Do you speak English?"
+2. **Essentials** - Directions, transport words, "how much?", "where is...?", essential place names
+3. **Getting Around** - Taxi/bus/train phrases, hotel check-in/out, restaurant ordering, reading a menu, paying the bill
+4. **Social** - Introductions, likes/dislikes, small talk, compliments
 5. **Confidence** - Handling misunderstandings, bargaining, making plans, phone numbers
 
 Target level determines how many tiers: survival=1-2, conversational=1-4, confident=all 5.
 
 ## Deep Personalisation (City + Interests + Preferences)
 
-The destination city, user interests, and food preferences should drive content generation at EVERY level, not just cultural tips. This is the key differentiator of CafeLingo Go.
+The destination city, user interests, and food preferences drive content generation at EVERY level. This is the key differentiator of CafeLingo Go.
 
 ### City-Specific Content
-When Claude generates lessons and challenges, it must use real local knowledge:
-
-**Real places and landmarks** - Scenarios are set in actual locations. Barcelona: "asking for directions to La Boqueria from Las Ramblas", "ordering at a cafe in the Gothic Quarter", "buying metro tickets at Passeig de Gràcia". Madrid: "finding the Prado from Sol", "ordering bocadillo de calamares at Plaza Mayor". Not generic "where is the museum?" but "¿Dónde está el Parque Güell?".
-
-**Local food and dishes** - Each city has its own cuisine. The restaurant/cafe scenarios should teach the actual dishes they'll encounter:
-- Barcelona: pa amb tomàquet, fideuà, crema catalana, escalivada, cava
-- Madrid: cocido madrileño, bocadillo de calamares, churros con chocolate, callos
-- Seville: gazpacho, salmorejo, pescaíto frito, espinacas con garbanzos
-- Valencia: paella valenciana, horchata, agua de Valencia, all i pebre
-- Generic Spain: tortilla española, jamón ibérico, patatas bravas, sangría
-
-**City transport systems** - Teach the transport they'll actually use:
-- Barcelona: metro (TMB), FGC trains, bus, Aerobus to airport, funicular to Montjuïc
-- Madrid: metro, Cercanías trains, bus, airport express
-- Seville: tram (MetroCentro), bus, taxi
-- Smaller cities: primarily bus and taxi
-
-**Realistic local prices** - Number practice uses real prices. "Un café con leche cuesta un euro ochenta" (€1.80 in Madrid), not abstract counting. Menu items, taxi fares, metro tickets — all at realistic local prices.
-
-**Neighbourhood knowledge** - Directions scenarios reference real neighbourhoods and their characteristics. "You're in El Born and want to find a pharmacy" or "You're at Puerta del Sol and need to get to Retiro park".
-
-**Local customs specific to the city/region** - Meal times, tipping norms, siesta hours, regional greetings, local festivals around their travel dates. Catalan greetings in Barcelona vs Andalusian expressions in Seville.
+Scenarios use real places, local dishes, actual transport systems, realistic prices, real neighbourhoods, and city-specific customs.
 
 ### Interest-Driven Scenarios
-User interests directly shape which scenarios are generated:
-
-- **Football** → Buying match tickets, talking about the local team in a bar, understanding matchday vocabulary, getting to the stadium. Barcelona=Camp Nou, Madrid=Santiago Bernabéu.
-- **History** → Asking about exhibits at local museums, discussing landmarks, understanding historical plaques and signs.
-- **Nightlife** → Ordering drinks at a bar, making small talk, understanding club/bar etiquette, late-night taxi.
-- **Art** → Gallery vocabulary, discussing what you've seen, buying art prints.
-- **Nature** → Hiking vocabulary, asking about trails, weather, national parks near the city.
-- **Shopping** → Bargaining at markets, asking about sizes/colours, returning items, local speciality shops.
-- **Architecture** → Describing buildings, asking about Gaudí/historical architecture, booking tours.
-- **Music** → Buying concert tickets, talking about music preferences, flamenco vocabulary in Andalusia.
-- **Photography** → Asking permission to take photos, describing scenes, asking locals about best viewpoints.
+Football → match tickets, stadium directions. History → museum exhibits. Nightlife → bar ordering. Art → gallery vocab. Nature → hiking trails. Shopping → market bargaining. Architecture → building descriptions. Music → concert tickets. Photography → asking permission.
 
 ### Food Preferences Shape Survival Vocabulary
-Food preferences aren't just for restaurant scenarios — they affect what's taught as essential vocabulary:
-- **Vegetarian/Vegan** → "sin carne", "es vegetariano/vegano", "¿tiene opciones sin carne?", "¿qué lleva este plato?" become SURVIVAL tier, not social tier. These are genuinely essential for this user.
-- **Seafood lover** → Local fish/shellfish names, market vocabulary, "¿qué pescado es fresco hoy?"
-- **Allergies** → "Soy alérgico/a a...", "¿contiene frutos secos/gluten/lácteos?" — taught as emergency vocabulary.
-- **Adventurous eater** → "¿Qué me recomienda?", "Quiero probar algo típico de aquí", local delicacy names.
-
-### Cultural Tips Are City-Specific
-Cultural tips should be relevant to their actual destination and travel dates:
-- Festival calendar: if travelling during La Mercè (Barcelona, Sept), Feria de Abril (Seville, April), San Isidro (Madrid, May) etc.
-- Local customs: Catalan vs Castilian expectations, regional identity awareness
-- Practical tips: "Shops close 2-5pm in Seville but many stay open in Barcelona tourist areas"
-- Tipping: "In Spain, tipping isn't expected but rounding up is appreciated"
-- Timing: "Dinner before 9pm will get you an empty restaurant"
-
-### How This Feeds Into the Prompt Templates
-The curriculum generation prompt (`lib/prompts/curriculum-prompt.ts`) receives the full user profile and must:
-1. Research/use knowledge of the specific destination city
-2. Set every scenario in a real, named location within that city
-3. Use actual local dishes, prices, transport, and landmarks
-4. Prioritise vocabulary based on stated food preferences and interests
-5. Generate cultural tips tied to the city and (if possible) the travel dates
-
-The lesson generation prompt (`lib/prompts/lesson-generate-prompt.ts`) receives:
-1. The topic being taught (e.g., "restaurant ordering")
-2. The full user profile (city, interests, food prefs)
-3. Previously learned vocabulary (to build on, not repeat)
-4. Must set the scenario in a specific named venue/location in the destination city
-5. Must use locally appropriate food, prices, customs
+Vegetarian/vegan needs become SURVIVAL tier vocabulary. Allergies are taught as emergency phrases. Adventurous eaters get local delicacy names.
 
 ## Daily Challenge Types
 - `vocab-recall` - Multiple choice "What does X mean?"
@@ -113,145 +132,111 @@ The lesson generation prompt (`lib/prompts/lesson-generate-prompt.ts`) receives:
 - `cultural-tip` - Read a cultural insight about destination
 - `flashcard-review` - Spaced repetition session
 
+## Daily Schedule Generation
+Built at curriculum generation time in `schedule-engine.ts`:
+- **Pass 1**: Each topic gets one day as `scenario-conversation` (in order)
+- **Pass 2**: Remaining days get review challenges cycling through topics with varied types
+
 ## Spaced Repetition
-SM-2 algorithm: intervals 1→3→7→14→30 days. Words enter SRS after completing a lesson. Daily challenges automatically include due SRS items.
+SM-2 algorithm: intervals 1→3→7→14→30 days. Words enter SRS after completing a lesson. The challenge selector automatically pushes flashcard review when 5+ items are due.
 
 ## Pages
 - `/` - Redirect to /onboarding (no profile) or /dashboard (has profile)
 - `/onboarding` - 4-step form: Welcome → Destination → Goals → Summary/Generate
-- `/dashboard` - Countdown calendar, progress rings, daily challenge, streak, curriculum timeline
-- `/lesson` - Reused conversation page (avatar + chat + pronunciation)
-- `/review` - SRS flashcard review sessions
+- `/dashboard` - **Tabbed layout** (Learn / Travel) with compact header, stats strip, smart daily challenge, Next Lesson CTA, curriculum timeline
+- `/lesson` - Avatar conversation page (scrollable middle, pinned bottom controls)
+- `/review` - SRS flashcard review (pinned score buttons at bottom with `100dvh`)
 - `/drill` - Quick drills (vocab recall, listen-repeat, how-would-you-say)
 - `/vocab` - Browse all learned vocabulary
-
-## During-the-Trip Features (Phase 7)
-
-### "Help Me Say" Floating Button
-A persistent floating action button visible on all pages (except onboarding). User taps it, types what they want to say in English, gets instant translation with pronunciation and a play button. Implemented as a global component in layout. Think of it as a panic button for language — faster than navigating to the translate page.
-
-### Conversation Phrasebook (`/phrasebook`)
-Pre-generated, categorised phrase reference organised by real situations: "At the restaurant", "Getting a taxi", "At the pharmacy", "Hotel check-in", "Shopping", "Complaining politely", "Small talk", "Emergencies". Each phrase has target language text, English translation, pronunciation guide, and TTS playback. Generated via Claude based on destination city. Searchable and filterable by category. Designed to work as a quick offline-ready reference.
-
-### Pronunciation Passport (`/passport`)
-The 20-30 phrases you absolutely must be able to say clearly before your trip. Includes: hotel address, allergy declarations, "I'm lost", "call an ambulance", "where is the nearest...?", user's specific dietary needs. Each phrase has TTS playback and pronunciation scoring via Azure Speech. Progress tracking shows which phrases are "passport stamped" (scored above threshold). Perfect for drilling on the flight over.
-
-### Cultural Dos & Don'ts (`/culture`)
-Quick-reference swipeable cards generated by Claude for the specific destination city and travel dates. Covers: tipping norms, greeting customs, meal time expectations, dress codes for religious sites, local festival awareness, common tourist mistakes, regional identity sensitivity (e.g., Catalan vs Castilian). Each card has a do/don't classification, explanation, and optionally a useful phrase.
-
-### Daily Recap Journal (`/journal`)
-After each day on the trip, the user logs new words or phrases they encountered. The app uses Claude to provide translations, pronunciation, and example sentences, then automatically adds them to the SRS system. Over the trip, this builds a personal vocabulary journal that continues reinforcing after they return home. Stored in journal-store with Zustand persist.
-
-### Menu Scanner (`/menu-scanner`)
-User takes a photo of a restaurant menu. The image is sent to Claude's vision API which reads the menu items and returns structured translations with cultural context: dish name, translation, what it actually is, typical ingredients, price if visible, dietary flags (contains meat/dairy/gluten/nuts). Helps solve the universal traveller problem of staring at an incomprehensible menu.
+- `/settings` - Profile editing, trip management (edit/archive/restore/delete/regenerate), theme, stats, danger zone
+- `/translate` - Two-way translation
+- `/phrasebook` - Categorised phrase reference by situation
+- `/passport` - Must-know pronunciation phrases with scoring
+- `/culture` - Cultural dos & don'ts cards
+- `/journal` - Daily recap word journal
+- `/menu-scanner` - Camera menu translation via Claude Vision
+- `/guide` - AI-generated city guide
 
 ## API Routes
-Port unchanged from cafe-lingo:
-- `/api/tts` - ElevenLabs TTS (with male/female voice maps)
+
+### Ported from cafe-lingo (with lazy init)
+- `/api/tts` - ElevenLabs TTS (male/female voice maps)
 - `/api/stt` - OpenAI Whisper
-- `/api/pronunciation` - Azure Speech assessment
+- `/api/pronunciation` - Azure Speech REST API + scoring curve
 - `/api/chat` - Claude conversation responses
 
-New:
-- `/api/curriculum/generate` - Claude generates full curriculum from user profile
-- `/api/curriculum/daily` - Returns today's challenge selection
-- `/api/lesson-generate` - Claude generates a single Scenario on demand
-- `/api/translate` - Claude translation with pronunciation and literal meaning
-- `/api/guide` - Claude generates city guide (transport, attractions, emergency, eating)
-- `/api/phrasebook` - Claude generates categorised phrasebook for destination
-- `/api/passport` - Claude generates must-know pronunciation phrases
-- `/api/culture` - Claude generates cultural dos & don'ts cards
-- `/api/journal/enrich` - Claude enriches user-logged words with translations and example sentences
-- `/api/menu-scanner` - Claude Vision reads and translates menu photos
+### New for CafeLingo Go (all use lazy Anthropic init)
+- `/api/curriculum/generate` - Tier-by-tier curriculum generation (Claude Haiku 4.5)
+- `/api/curriculum/daily` - Daily challenge selection (uses `selectDailyChallenge`)
+- `/api/lesson-generate` - Single scenario generation (Claude Haiku 4.5, 4 turns)
+- `/api/translate` - Translation with pronunciation
+- `/api/guide` - City guide generation
+- `/api/phrasebook` - Categorised phrasebook generation
+- `/api/passport` - Must-know phrases generation
+- `/api/culture` - Cultural dos & don'ts generation
+- `/api/journal/enrich` - Enriches user-logged words with translations
+- `/api/menu-scanner` - Claude Vision menu reading
 
-## Components to Port from cafe-lingo (unchanged)
-Copy these from E:/Claude Projects/cafe-lingo/src/ into this project's src/:
-- `components/avatar/TalkingHeadAvatar.tsx`
-- `components/audio/RecordButton.tsx`
-- `components/chat/ChatBubble.tsx`, `ChatPanel.tsx`, `PromptCard.tsx`
-- `components/pronunciation/PronunciationFeedback.tsx`
-- `components/lesson/VocabularyPanel.tsx`
-- `lib/audio/recorder.ts`, `audio-utils.ts`
-- `lib/hooks/useConversationFlow.ts`
-- `lib/store/lesson-store.ts`
-- `lib/types/scenario.ts`, `pronunciation.ts`
-- `lib/prompts/system-prompt.ts`
+All API routes export `maxDuration = 60` for Vercel serverless timeout.
 
-Also copy from E:/Claude Projects/cafe-lingo/:
-- `public/models/male.glb`, `female.glb`, `mpfb.glb` → into this project's public/models/
-- `.env.local` → copy and reuse same API keys (ELEVENLABS_API_KEY, OPENAI_API_KEY, AZURE_SPEECH_KEY, AZURE_SPEECH_REGION, ANTHROPIC_API_KEY)
-- `app/layout.tsx`, `globals.css` → use as starting point (modify for Go branding)
+## Zustand Stores (all persisted to localStorage)
+- `user-store.ts` (`cafelingo-go-user`) - UserProfile
+- `trip-store.ts` (`cafelingo-go-trips`) - Trips, curriculum, cached scenarios, generation state
+- `srs-store.ts` (`cafelingo-go-srs`) - Spaced repetition items
+- `streak-store.ts` (`cafelingo-go-streak`) - Daily streak tracking
+- `theme-store.ts` (`cafelingo-go-theme`) - Light/dark/system preference
+- `journal-store.ts` (`cafelingo-go-journal`) - Travel journal entries
+- `lesson-store.ts` (NOT persisted) - Current lesson session state
 
-Also reference E:/Claude Projects/cafe-lingo/src/ for these API routes to copy:
-- `app/api/tts/route.ts`
-- `app/api/stt/route.ts`
-- `app/api/pronunciation/route.ts`
-- `app/api/chat/route.ts`
-
-## Components to Port with Modifications
-- `LessonHeader` - Add tier badge, countdown ("Day 12 of 45"), back to dashboard
-- `progress-store` - Extend with curriculum progress, streak, total minutes
-- `lesson/page.tsx` - Load generated scenarios from curriculum-store, not just static routes
-
-## New Components to Build
-- **Onboarding**: StepWelcome, StepDestination, StepGoals, StepSummary, ProgressDots
-- **Dashboard**: CountdownCalendar, DailyChallenge, StreakTracker, ProgressRing, CurriculumTimeline, QuickActions
-- **Review**: FlashCard, ReviewSession, ReviewStats
-- **Drills**: DrillSelector, VocabRecallDrill, ListenRepeatDrill, HowWouldYouSayDrill, CulturalTipCard
-
-## New Stores (Zustand persist)
-- `user-store.ts` - UserProfile
-- `curriculum-store.ts` - Generated curriculum + cached lesson Scenarios
-- `srs-store.ts` - Spaced repetition item states
-- `streak-store.ts` - Daily streak tracking
-
-## New Lib Modules
+## Key Lib Modules
 - `lib/curriculum/tier-definitions.ts` - Static tier metadata
 - `lib/curriculum/schedule-engine.ts` - Distributes topics across available days
-- `lib/curriculum/challenge-selector.ts` - Daily challenge selection algorithm
-- `lib/curriculum/srs-engine.ts` - SM-2 interval calculator
-- `lib/prompts/curriculum-prompt.ts` - Claude prompt for curriculum generation
-- `lib/prompts/lesson-generate-prompt.ts` - Claude prompt for single lesson generation
+- `lib/curriculum/challenge-selector.ts` - Smart daily challenge selection with SRS override
+- `lib/curriculum/srs-engine.ts` - SM-2 interval calculator + vocabToSRSItems converter
+- `lib/prompts/curriculum-prompt.ts` - `buildTierPrompt()` for single-tier generation
+- `lib/prompts/lesson-generate-prompt.ts` - Lesson scenario prompt (4 turns, 2-3 vocab each)
+- `lib/hooks/useConversationFlow.ts` - Core lesson flow: TTS → record → STT → pronunciation → chat → advance
+- `lib/config/language-registry.ts` - Language configs (locale, flag, voices, Azure locale, example cities)
 
-## Build Order
-### Phase 1: Foundation
-1. Create Next.js app, install deps, port shared components/types/API routes from cafe-lingo
-2. Create new TypeScript interfaces (UserProfile, Curriculum, DailyChallenge, SRSItem)
-3. Create Zustand stores (user-store, curriculum-store, srs-store, streak-store)
-4. Root routing logic (redirect based on profile existence)
+## Key Components
+- `components/avatar/TalkingHeadAvatar.tsx` - 3D avatar with lip sync (TalkingHead.js)
+- `components/audio/RecordButton.tsx` - Microphone record button
+- `components/chat/ChatPanel.tsx`, `ChatBubble.tsx`, `PromptCard.tsx` - Conversation UI
+- `components/pronunciation/PronunciationFeedback.tsx` - Score ring + sub-scores + word badges
+- `components/lesson/VocabularyPanel.tsx` - Key vocabulary display
+- `components/HelpMeSay.tsx` - Floating translate button (hidden on lesson/review/drill)
 
-### Phase 2: Onboarding
-5. Onboarding page with 4 step components
-6. Curriculum generation API + Claude prompt template
-7. Tier definitions + schedule engine
+## Deployment
+- **Vercel Hobby plan** — `lhr1` region (London) for UK latency
+- **vercel.json**: `{ "regions": ["lhr1"] }`
+- **Vercel Speed Insights** enabled via `@vercel/speed-insights/next`
+- Static assets are content-hashed (automatic cache busting on deploy)
+- No service worker — users always get latest version on navigation
 
-### Phase 3: Dashboard
-8. Dashboard page with countdown, progress rings, streak
-9. Daily challenge component + challenge selector algorithm
-10. Curriculum timeline, quick actions
+## Environment Variables (Vercel + .env.local)
+- `ANTHROPIC_API_KEY` - Claude API
+- `ELEVENLABS_API_KEY` - TTS
+- `OPENAI_API_KEY` - Whisper STT
+- `AZURE_SPEECH_KEY` - Pronunciation assessment
+- `AZURE_SPEECH_REGION` - Azure region (e.g., `uksouth`)
 
-### Phase 4: Lesson Generation
-11. Lesson generation API (Claude generates Scenario on demand)
-12. Extend lesson page to load generated scenarios
+## ElevenLabs Voice IDs
+- Female: es=FGY2WhTYpPnrIDTdsKH5 (Laura), fr=XB0fDUnXU5powFXDhCwa (Charlotte)
+- Male: es/fr=onwK4e9ZLuTAKqWW03F9 (Daniel multilingual)
 
-### Phase 5: Drills & Review
-13. SRS engine (SM-2 calculator)
-14. Review page with flashcards
-15. Drill page with all drill types
+## Known Gotchas & Patterns
 
-### Phase 6: Polish
-16. Profile editing, curriculum regeneration
-17. Theming/branding, error handling, edge cases
-
-### Phase 7: During-the-Trip Features
-18. Instant two-way voice translator (`/translate`) — speak English, hear target language and vice versa
-19. City guide (`/guide`) — AI-generated transport, attractions, emergency phrases, dining info
-20. "Help Me Say" floating button — global quick-translate widget accessible from any page
-21. Conversation Phrasebook (`/phrasebook`) — categorised, searchable phrase reference by situation
-22. Pronunciation Passport (`/passport`) — the 20-30 must-know phrases with pronunciation scoring drill
-23. Cultural Dos & Don'ts (`/culture`) — quick-reference cards for local customs, etiquette, events
-24. Daily Recap Journal (`/journal`) — log new words encountered during the trip, auto-adds to SRS
-25. Menu Scanner (`/menu-scanner`) — camera OCR of restaurant menus with translation and dish explanations
+1. **Never use module-level Anthropic client init** — causes Vercel cold start crashes
+2. **Never use hardcoded Tailwind colors** — breaks in light mode. Always use CSS variables
+3. **Use `h-[100dvh]` not `min-h-screen`** for full-screen mobile pages
+4. **Curriculum generation is tier-by-tier** — the user explicitly required this: "it needs to be fed in small chunks, piece at a time to stay within limits"
+5. **Lesson prompt asks for exactly 4 turns, 2-3 vocab each** — to stay within 4096 token limit
+6. **Assistant prefill `"{"` technique** forces Claude to output JSON without markdown fences
+7. **Reset All Data** uses `localStorage.removeItem()` + `window.location.href` — never Zustand `clearAll()` calls which cause cascading re-render crashes
+8. **HelpMeSay** is hidden on pages with bottom controls (`/lesson`, `/review`, `/drill`)
+9. **Pronunciation always tries Azure first**, falls back to client-side estimation — no env var gating
+10. **`color-mix()` CSS function** is the pattern for theme-aware transparent backgrounds
+11. **Trip archive** is non-destructive — sets `status: "archived"`, preserves all data, can be restored
 
 ## Data Models
 
@@ -261,16 +246,25 @@ interface UserProfile {
   id: string;
   name: string;
   age: number;
-  country: string; // default "Scotland"
-  destinationCity: string;
-  destinationCountry: string;
-  holidayDate: string; // ISO date
-  targetLevel: "survival" | "conversational" | "confident";
-  targetLanguage: "es" | "fr";
-  foodPreferences: string[];
-  interests: string[];
+  country: string;
   avatarGender: "male" | "female";
   createdAt: string;
+}
+```
+
+### Trip
+```typescript
+interface Trip {
+  id: string;
+  destinationCity: string;
+  destinationCountry: string;
+  holidayDate: string;
+  targetLevel: "survival" | "conversational" | "confident";
+  language: TargetLanguage;
+  foodPreferences: string[];
+  interests: string[];
+  status: "active" | "archived" | "completed";
+  curriculum?: Curriculum;
 }
 ```
 
@@ -278,11 +272,11 @@ interface UserProfile {
 ```typescript
 interface Curriculum {
   id: string;
-  userId: string;
+  tripId: string;
   generatedAt: string;
   targetLevel: TargetLevel;
   totalDays: number;
-  language: "es" | "fr";
+  language: TargetLanguage;
   tiers: CurriculumTier[];
   dailySchedule: DailyScheduleEntry[];
   metadata: { destinationCity: string; userInterests: string[]; foodPreferences: string[]; };
@@ -297,8 +291,8 @@ interface SRSItem {
   translation: string;
   pronunciation: string;
   partOfSpeech: string;
-  language: "es" | "fr";
-  interval: number; // days
+  language: TargetLanguage;
+  interval: number;
   easeFactor: number; // SM-2, default 2.5
   repetitions: number;
   nextReviewDate: string;
@@ -310,6 +304,9 @@ interface SRSItem {
 }
 ```
 
-## ElevenLabs Voice IDs
-- Female: es=FGY2WhTYpPnrIDTdsKH5 (Laura), fr=XB0fDUnXU5powFXDhCwa (Charlotte)
-- Male: es/fr=onwK4e9ZLuTAKqWW03F9 (Daniel multilingual)
+## Future Improvements (Not Yet Built)
+- Smarter schedule reordering based on performance (currently fixed at generation time)
+- Offline support / PWA
+- French language support
+- More languages via language-registry expansion
+- Performance-adaptive difficulty within lessons
