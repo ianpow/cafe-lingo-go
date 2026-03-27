@@ -1,34 +1,32 @@
 import { getLanguage } from "@/lib/config/language-registry";
-import { getTiersForLevel } from "@/lib/curriculum/tier-definitions";
-import type { TargetLevel, TargetLanguage } from "@/lib/types/curriculum";
+import type { TargetLanguage } from "@/lib/types/curriculum";
+import type { TierDefinition } from "@/lib/curriculum/tier-definitions";
 
-export function buildCurriculumPrompt(
+/**
+ * Build a prompt to generate a SINGLE tier of the curriculum.
+ * Called once per tier to keep responses well within token limits.
+ */
+export function buildTierPrompt(
+  tier: TierDefinition,
   profile: { name: string; age: number; country: string },
   trip: {
     destinationCity: string;
     destinationCountry: string;
     holidayDate: string;
-    targetLevel: TargetLevel;
     language: TargetLanguage;
     foodPreferences: string[];
     interests: string[];
   },
   totalDays: number
 ): string {
-  const tiers = getTiersForLevel(trip.targetLevel);
-  const tierDescriptions = tiers
-    .map(
-      (t) =>
-        `Tier ${t.id} — ${t.name}: ${t.topicTemplates.join(", ")}`
-    )
-    .join("\n");
-
   const langName = getLanguage(trip.language).name;
 
-  return `Create a ${langName} curriculum for ${profile.name} visiting ${trip.destinationCity}, ${trip.destinationCountry} on ${trip.holidayDate} (${totalDays} days to prepare). Level: ${trip.targetLevel}. Interests: ${trip.interests.join(", ") || "none"}. Food: ${trip.foodPreferences.join(", ") || "none"}.
+  return `Generate Tier ${tier.id} ("${tier.name}") of a ${langName} curriculum for ${profile.name} visiting ${trip.destinationCity}, ${trip.destinationCountry} on ${trip.holidayDate} (${totalDays} days to prepare).
 
-Tiers:
-${tierDescriptions}
+Interests: ${trip.interests.join(", ") || "none"}. Food: ${trip.foodPreferences.join(", ") || "none"}.
+
+Tier ${tier.id} — ${tier.name}: ${tier.description}
+Topics to cover: ${tier.topicTemplates.join(", ")}
 
 Rules:
 - Use REAL locations, restaurants, landmarks in ${trip.destinationCity}
@@ -36,8 +34,8 @@ Rules:
 - Set scenarios in specific real places
 - Include a short culturalTip per topic
 
-Respond with ONLY valid JSON, no markdown. Structure:
-{"tiers":[{"id":1,"name":"Survival","description":"...","topics":[{"id":"t1-1","title":"...","description":"...","tierId":1,"vocabulary":["word1","word2"],"scenarioSetting":"...","culturalTip":"..."}]}]}
+Respond with ONLY valid JSON, no markdown:
+{"id":${tier.id},"name":"${tier.name}","description":"...","topics":[{"id":"t${tier.id}-1","title":"...","description":"...","tierId":${tier.id},"vocabulary":["word1","word2"],"scenarioSetting":"...","culturalTip":"..."}]}
 
-Generate ${tiers.map((t) => `${t.topicTemplates.length} topics for Tier ${t.id}`).join(", ")}. Be concise.`;
+Generate exactly ${tier.topicTemplates.length} topics. Be concise.`;
 }
