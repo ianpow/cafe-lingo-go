@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 3000,
+      max_tokens: 8192,
       messages: [
         { role: "user", content: prompt },
         { role: "assistant", content: '{"tiers":[' },
@@ -70,6 +70,33 @@ export async function POST(request: NextRequest) {
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim();
+    }
+
+    // If response was truncated, try to repair the JSON
+    if (response.stop_reason === "max_tokens") {
+      console.warn("[curriculum] Response truncated at max_tokens, attempting JSON repair");
+      let openBraces = 0;
+      let openBrackets = 0;
+      let inString = false;
+      let escaped = false;
+      for (const ch of jsonStr) {
+        if (escaped) { escaped = false; continue; }
+        if (ch === '\\') { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === '{') openBraces++;
+        if (ch === '}') openBraces--;
+        if (ch === '[') openBrackets++;
+        if (ch === ']') openBrackets--;
+      }
+      // If we're inside a string, close it
+      if (inString) jsonStr += '"';
+      // Remove trailing partial key/value
+      jsonStr = jsonStr.replace(/,\s*"[^"]*"?\s*$/, '');
+      jsonStr = jsonStr.replace(/,\s*$/, '');
+      // Close open brackets and braces
+      for (let i = 0; i < openBrackets; i++) jsonStr += ']';
+      for (let i = 0; i < openBraces; i++) jsonStr += '}';
     }
 
     let parsed;
