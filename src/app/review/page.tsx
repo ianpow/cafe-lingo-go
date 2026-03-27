@@ -51,7 +51,7 @@ export default function ReviewPage() {
   // All done
   if (dueItems.length === 0 || currentIndex >= dueItems.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="h-[100dvh] flex items-center justify-center px-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">
             {reviewedCount > 0 ? "Review Complete!" : "No cards to review"}
@@ -73,9 +73,9 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-[100dvh] flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-4 p-4 border-b border-[var(--color-surface-light)]">
+      <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b border-[var(--color-surface-light)]">
         <button
           onClick={() => router.push("/dashboard")}
           className="text-[var(--color-text-muted)] hover:text-white transition-colors cursor-pointer"
@@ -92,8 +92,8 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      {/* Card */}
-      <div className="flex-1 flex items-center justify-center px-4">
+      {/* Card — takes available space */}
+      <div className="flex-1 flex items-center justify-center px-4 min-h-0">
         <div
           className="w-full max-w-sm bg-[var(--color-surface)] rounded-2xl p-8 text-center cursor-pointer border border-[var(--color-surface-light)]"
           onClick={() => setShowAnswer(true)}
@@ -116,20 +116,26 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      {/* Score buttons */}
-      {showAnswer && (
-        <div className="p-4 pb-8 space-y-2">
-          <p className="text-center text-xs text-[var(--color-text-muted)] mb-2">
-            How well did you know this?
-          </p>
-          <div className="flex gap-2">
-            <ScoreButton label="Again" score={1} color="red" onClick={handleScore} />
-            <ScoreButton label="Hard" score={3} color="yellow" onClick={handleScore} />
-            <ScoreButton label="Good" score={4} color="green" onClick={handleScore} />
-            <ScoreButton label="Easy" score={5} color="cyan" onClick={handleScore} />
+      {/* Score buttons — always pinned at bottom */}
+      <div className="flex-shrink-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[var(--color-bg)] border-t border-[var(--color-surface-light)]">
+        {showAnswer ? (
+          <div className="space-y-2">
+            <p className="text-center text-xs text-[var(--color-text-muted)]">
+              How well did you know this?
+            </p>
+            <div className="flex gap-2">
+              <ScoreButton label="Again" score={1} color="red" onClick={handleScore} />
+              <ScoreButton label="Hard" score={3} color="yellow" onClick={handleScore} />
+              <ScoreButton label="Good" score={4} color="green" onClick={handleScore} />
+              <ScoreButton label="Easy" score={5} color="cyan" onClick={handleScore} />
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-center text-xs text-[var(--color-text-muted)] py-3">
+            Tap the card to reveal the answer
+          </p>
+        )}
+      </div>
     </div>
   );
 }

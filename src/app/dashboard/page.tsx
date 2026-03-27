@@ -8,6 +8,7 @@ import { useStreakStore } from "@/lib/store/streak-store";
 import { useSRSStore } from "@/lib/store/srs-store";
 import { getLanguage } from "@/lib/config/language-registry";
 import { useThemeStore } from "@/lib/store/theme-store";
+import { selectDailyChallenge } from "@/lib/curriculum/challenge-selector";
 
 type Tab = "learn" | "travel";
 
@@ -22,7 +23,6 @@ export default function DashboardPage() {
   const generationError = useTripStore((s) => s.generationError);
   const getCompletedTopicCount = useTripStore((s) => s.getCompletedTopicCount);
   const getTotalTopicCount = useTripStore((s) => s.getTotalTopicCount);
-  const getTodaysChallenge = useTripStore((s) => s.getTodaysChallenge);
   const getDaysUntilHoliday = useTripStore((s) => s.getDaysUntilHoliday);
   const streak = useStreakStore();
   const { setTheme, getResolvedTheme } = useThemeStore();
@@ -48,12 +48,21 @@ export default function DashboardPage() {
   const completedTopics = getCompletedTopicCount();
   const totalTopics = getTotalTopicCount();
   const progressPercent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
-  const todaysChallenge = getTodaysChallenge();
 
   // Find next uncompleted topic for "Next Lesson" CTA
   const nextTopic = activeTrip?.curriculum?.tiers
     .flatMap((t) => t.topics)
     .find((t) => !t.completed);
+
+  // Smart daily challenge — uses SRS data and avoids duplicating "Next Lesson"
+  const todaysChallenge = activeTrip?.curriculum
+    ? selectDailyChallenge(
+        activeTrip.curriculum.dailySchedule,
+        activeTrip.curriculum.tiers,
+        dueItemCount,
+        nextTopic?.id || null
+      )
+    : null;
 
   return (
     <div className="min-h-screen flex flex-col">
